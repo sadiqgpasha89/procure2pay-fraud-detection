@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P2P Fraud — Investigator Console</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--mut:#667085;--card:#fff;--line:#e4e7ec;--acc:#2f5bea;--bad:#c0392b;--ok:#1e8e5a;--warn:#b7791f}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--fg:#e8ebf0;--mut:#98a2b3;--card:#171c23;--line:#2a313b;--acc:#7c9cff;--bad:#ff7b6b;--ok:#4cc38a;--warn:#e3b341}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;gap:24px;flex-wrap:wrap;align-items:baseline}
+h1{font-size:16px;margin:0}.kpi{color:var(--mut)}.kpi b{color:var(--fg);font-size:15px}
+main{display:grid;grid-template-columns:minmax(320px,1fr) minmax(360px,1.4fr);gap:16px;padding:16px 20px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr.row{cursor:pointer}tr.row:hover,tr.sel{background:color-mix(in srgb,var(--acc) 10%,transparent)}
+.pill{padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid var(--line)}.HIGH{color:var(--bad)}.MED{color:var(--warn)}
+button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.p{background:var(--acc);color:#fff;border-color:var(--acc)}code{font-size:12px;color:var(--mut)}
+.ev{font-size:12px;color:var(--mut);margin:2px 0;word-break:break-all}select{font:inherit;padding:4px}
+</style></head><body>
+<header><h1>Investigator console</h1><span id="k"></span></header>
+<main>
+ <section class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>Case queue</b>
+  <select id="f"><option value="">all</option><option>PENDING_REVIEW</option><option>INVESTIGATING</option><option>DISPOSED</option></select></div>
+  <table><thead><tr><th>Case</th><th>Invoice</th><th>Amount</th><th>Risk</th><th>Status</th></tr></thead><tbody id="q"></tbody></table></section>
+ <section class="card" id="d"><span class="kpi">Select a case.</span></section>
+</main>
+<script>
+const $=s=>document.querySelector(s), esc=t=>String(t??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+async function j(u,o){const r=await fetch(u,o);if(!r.ok)throw new Error(await r.text());return r.json()}
+async function metrics(){const m=await j('/v1/metrics');$('#k').innerHTML=
+ `<span class=kpi>cases <b>${m.cases_total}</b></span> <span class=kpi>prevented loss <b>$${(m.gross_prevented_loss||0).toLocaleString()}</b></span> `+
+ `<span class=kpi>agent acceptance <b>${m.recommendation_acceptance_rate??'–'}</b></span> <span class=kpi>FP cost <b>$${m.false_positive_operational_cost}</b></span> `+
+ `<span class=kpi>synthesis p50 <b>${m.median_synthesis_latency_sec??'–'}s</b></span>`}
+async function queue(){const rows=await j('/v1/cases?limit=200'+($('#f').value?'&status='+$('#f').value:''));
+ $('#q').innerHTML=rows.map(c=>`<tr class="row" data-id="${c.case_id}"><td>${c.case_id}</td><td>${c.invoice_id}</td><td>$${c.amount.toLocaleString()}</td>
+ <td><span class="pill ${c.risk_score>=.7?'HIGH':'MED'}">${c.risk_score?.toFixed(2)??'–'}</span></td><td>${c.status}</td></tr>`).join('');
+ document.querySelectorAll('tr.row').forEach(r=>r.onclick=()=>show(r.dataset.id))}
+async function show(id){const c=await j('/v1/cases/'+id),d=c.dossier;
+ document.querySelectorAll('tr.row').forEach(r=>r.classList.toggle('sel',r.dataset.id===id));
+ if(!d){$('#d').innerHTML=`<b>${id}</b><p class=kpi>Investigation running… (violations: ${esc(c.violations.join(', ')||'none')})</p>`;return}
+ $('#d').innerHTML=`<b>${id}</b> · ${c.invoice_id} · ${c.vendor_id} · <span class="pill">${d.recommended_action}</span>
+ <p>${esc(d.agent_narrative)}</p>
+ <p><b>Rule violations:</b> ${esc(d.risk_assessment.rule_violations.join(', ')||'none')}<br><b>Top drivers:</b> ${d.risk_assessment.top_contributing_factors.map(f=>esc(f.feature)+' ('+f.shap_value+')').join(', ')||'–'}</p>
+ <p><b>Graph:</b> ${esc(d.graph_findings.details)}</p>
+ <p><b>Evidence (hash-verified)</b></p>${d.evidence_manifest.map(e=>`<div class=ev>${e.source} · ${esc(e.record_id)} · <code>${e.verification_hash.slice(0,16)}…</code></div>`).join('')}
+ ${d.guardrail_notes.length?`<p><b>Guardrails</b></p>${d.guardrail_notes.map(n=>`<div class=ev>${esc(n)}</div>`).join('')}`:''}
+ ${c.status==='DISPOSED'?`<p class=kpi>Disposed: ${c.decision} by ${c.analyst_id}</p>`:`<p>
+  <button class=p onclick="dispo('${id}','CONFIRMED_FRAUD',true)">Confirm fraud</button>
+  <button onclick="dispo('${id}','FALSE_POSITIVE',false)">False positive</button></p>`}`}
+async function dispo(id,decision,acc){await j(`/v1/cases/${id}/disposition`,{method:'POST',headers:{'content-type':'application/json'},
+ body:JSON.stringify({decision,analyst_id:'analyst.demo',rationale:'Reviewed in console',accepted_recommendation:acc})});await refresh();show(id)}
+async function refresh(){await Promise.all([metrics(),queue()])}
+$('#f').onchange=queue;refresh();setInterval(refresh,5000);
+</script></body></html>

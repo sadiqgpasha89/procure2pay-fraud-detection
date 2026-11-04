@@ -1,0 +1,22 @@
+# gcloud builds submit --config deploy/cloudbuild.yaml --substitutions=_REGION=us-central1,_TAG=$(git rev-parse --short HEAD) .
+# Builds the single multi-service image with GCP extras and rolls every Cloud Run service to it.
+substitutions: { _REGION: us-central1, _TAG: latest }
+options: { logging: CLOUD_LOGGING_ONLY }
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "deploy/docker/Dockerfile", "--build-arg", "EXTRAS=gcp", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/p2p/app:${_TAG}", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/p2p/app:latest", "."]
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "--all-tags", "${_REGION}-docker.pkg.dev/$PROJECT_ID/p2p/app"]
+  - id: rollout
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        for s in audit mcp-erp mcp-graph mcp-knowledge scoring graph-analyst doc-auditor investigator case gateway; do
+          gcloud run services update "$$s" --region=${_REGION} --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/p2p/app:${_TAG} --quiet
+        done
+images: ["${_REGION}-docker.pkg.dev/$PROJECT_ID/p2p/app:${_TAG}"]

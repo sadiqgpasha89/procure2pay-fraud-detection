@@ -1,0 +1,54 @@
+# Multi-stage production container for Procure-to-Pay Fraud Detection API
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install system build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for fast deterministic builds
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+# Copy project definition
+COPY pyproject.toml .
+
+# Create hermetic venv and install dependencies
+RUN uv venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN uv pip install --no-cache .
+
+# Production Runner Stage
+FROM python:3.12-slim AS runner
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create unprivileged application user
+RUN useradd -m -u 1000 appuser
+
+# Copy virtual environment and source code
+COPY --from=builder /opt/venv /opt/venv
+COPY src/ /app/src/
+COPY pyproject.toml /app/
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    APP_PORT=8000
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

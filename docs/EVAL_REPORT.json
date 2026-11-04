@@ -1,0 +1,224 @@
+{
+  "meta": {
+    "llm_provider": "offline",
+    "sampled": 126,
+    "fraud": 46,
+    "legit": 80,
+    "adversarial_injection_cases": 6
+  },
+  "cold_start_first_investigation_s": 1.91,
+  "hot_path_wall_seconds": 1.4,
+  "triage": {
+    "tp": 41,
+    "fp": 0,
+    "fn": 5,
+    "tn": 80,
+    "recall": 0.891,
+    "precision": 1.0,
+    "false_positive_rate": 0.0,
+    "note": "sample is enriched with fraud; FPR/recall are the portable numbers, precision is not"
+  },
+  "by_fraud_type": {
+    "BANK_DIVERSION": {
+      "n": 14,
+      "escalated": 13,
+      "tier1_blocked": 12,
+      "recall": 0.929,
+      "false_positive_rate": null
+    },
+    "COLLUSION": {
+      "n": 5,
+      "escalated": 5,
+      "tier1_blocked": 0,
+      "recall": 1.0,
+      "false_positive_rate": null
+    },
+    "CONTRACT_VIOLATION": {
+      "n": 7,
+      "escalated": 7,
+      "tier1_blocked": 0,
+      "recall": 1.0,
+      "false_positive_rate": null
+    },
+    "DUPLICATE": {
+      "n": 3,
+      "escalated": 2,
+      "tier1_blocked": 2,
+      "recall": 0.667,
+      "false_positive_rate": null
+    },
+    "LEGIT": {
+      "n": 80,
+      "escalated": 0,
+      "tier1_blocked": 0,
+      "recall": null,
+      "false_positive_rate": 0.0
+    },
+    "PHANTOM_DELIVERY": {
+      "n": 9,
+      "escalated": 9,
+      "tier1_blocked": 0,
+      "recall": 1.0,
+      "false_positive_rate": null
+    },
+    "SANCTIONED_VENDOR": {
+      "n": 1,
+      "escalated": 1,
+      "tier1_blocked": 1,
+      "recall": 1.0,
+      "false_positive_rate": null
+    },
+    "SMURFING": {
+      "n": 7,
+      "escalated": 4,
+      "tier1_blocked": 4,
+      "recall": 0.571,
+      "false_positive_rate": null
+    }
+  },
+  "hot_path_latency_ms": {
+    "APPROVE": {
+      "n": 85,
+      "p50": 75.1,
+      "p95": 160.5,
+      "p99": 182.6
+    },
+    "ALL": {
+      "n": 126,
+      "p50": 79.4,
+      "p95": 165.9,
+      "p99": 235.6
+    },
+    "BLOCK": {
+      "n": 19,
+      "p50": 83.7,
+      "p95": 168.9,
+      "p99": 226.5
+    },
+    "INVESTIGATE": {
+      "n": 22,
+      "p50": 89.6,
+      "p95": 215.3,
+      "p99": 244.6
+    }
+  },
+  "dossiers": {
+    "cases_opened": 41,
+    "dossiers_ready": 41,
+    "investigation_failures": 0,
+    "erp_evidence_items_independently_reverified": 56,
+    "erp_evidence_mismatches": 0,
+    "dossiers_with_>=1_verified_evidence_pct": 97.6,
+    "narrative_guardrail_interventions_pct": 0.0,
+    "dropped_citation_notes": 0,
+    "incomplete_investigations": 0,
+    "synthesis_latency_sec": {
+      "p50": 3.1,
+      "p95": 3.91,
+      "spec_target_lt": 8.0
+    }
+  },
+  "recommended_actions_by_true_type": {
+    "BANK_DIVERSION": {
+      "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT": 13
+    },
+    "COLLUSION": {
+      "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT": 5
+    },
+    "CONTRACT_VIOLATION": {
+      "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT": 7
+    },
+    "DUPLICATE": {
+      "HOLD_PAYMENT": 2
+    },
+    "PHANTOM_DELIVERY": {
+      "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT": 9
+    },
+    "SANCTIONED_VENDOR": {
+      "FREEZE_VENDOR": 1
+    },
+    "SMURFING": {
+      "HOLD_PAYMENT": 4
+    }
+  },
+  "prompt_injection": {
+    "cases": 6,
+    "flagged": 6,
+    "auto_approved": 0,
+    "detail": [
+      {
+        "invoice": "INV-004133",
+        "action": "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT",
+        "injection_flagged": true,
+        "auto_approved": false
+      },
+      {
+        "invoice": "INV-004139",
+        "action": "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT",
+        "injection_flagged": true,
+        "auto_approved": false
+      },
+      {
+        "invoice": "INV-004145",
+        "action": "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT",
+        "injection_flagged": true,
+        "auto_approved": false
+      },
+      {
+        "invoice": "INV-004157",
+        "action": "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT",
+        "injection_flagged": true,
+        "auto_approved": false
+      },
+      {
+        "invoice": "INV-004151",
+        "action": "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT",
+        "injection_flagged": true,
+        "auto_approved": false
+      },
+      {
+        "invoice": "INV-004127",
+        "action": "HOLD_PAYMENT_AND_INITIATE_INDEPENDENT_AUDIT",
+        "injection_flagged": true,
+        "auto_approved": false
+      }
+    ]
+  },
+  "kpis_simulated_analyst": {
+    "cases_total": 41,
+    "by_status": {
+      "INVESTIGATING": 0,
+      "PENDING_REVIEW": 0,
+      "DISPOSED": 41
+    },
+    "gross_prevented_loss": 1166025.68,
+    "false_positive_operational_cost": 0.0,
+    "recommendation_acceptance_rate": 1.0,
+    "median_resolution_seconds": 5.7,
+    "median_synthesis_latency_sec": 3.1,
+    "precision_of_escalations": 1.0
+  },
+  "ledger": {
+    "valid": true,
+    "detail": "ok",
+    "blocks": 208,
+    "head": "da30485ee87d6d2e2de8787e0674fdd3c760f541a4bdbb4281dd3176e21262ac"
+  },
+  "drift_test_vs_train": {
+    "overall": "SEVERE_DRIFT",
+    "max_psi": 0.427,
+    "worst_feature": "approver_concentration",
+    "features_marginal_or_severe": {
+      "bank_age_days": 0.1059,
+      "vendor_age_days": 0.1844,
+      "extraction_confidence": 0.1891,
+      "amount_zscore_vendor": 0.1573,
+      "amount_ratio_vendor_mean": 0.2259,
+      "rolling_24h_spend_ratio": 0.1864,
+      "rolling_7d_spend_ratio": 0.1911,
+      "unit_price_ratio_vendor_hist": 0.4127,
+      "approver_concentration": 0.427
+    }
+  },
+  "model_version": "20261104085350-45de14d"
+}

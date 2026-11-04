@@ -1,0 +1,54 @@
+# Whole platform on one machine, open-source stack, ~zero cost:
+#   docker compose -f deploy/docker/docker-compose.yml up --build
+#   docker compose -f deploy/docker/docker-compose.yml --profile ollama up --build     # real local LLM instead of the reference model
+# Gateway: http://localhost:8100/docs   Investigator console: http://localhost:8102/
+x-app: &app
+  build: { context: ../.., dockerfile: deploy/docker/Dockerfile, args: { EXTRAS: ollama } }
+  image: p2p-fraud:local
+  environment: &env
+    DATA_DIR: /data
+    LLM_PROVIDER: ${LLM_PROVIDER:-offline}
+    OLLAMA_MODEL: ${OLLAMA_MODEL:-ollama_chat/gemma3:12b}
+    OLLAMA_API_BASE: http://ollama:11434
+    SERVICE_TOKEN: ${SERVICE_TOKEN:-change-me-in-any-shared-environment}
+    SCORING_URL: http://scoring:8101
+    CASE_URL: http://case:8102
+    AUDIT_URL: http://audit:8103
+    GATEWAY_URL: http://gateway:8100
+    MCP_ERP_URL: http://mcp-erp:8201/mcp
+    MCP_GRAPH_URL: http://mcp-graph:8202/mcp
+    MCP_KNOWLEDGE_URL: http://mcp-knowledge:8203/mcp
+    GRAPH_ANALYST_URL: http://graph-analyst:8301
+    DOC_AUDITOR_URL: http://doc-auditor:8302
+    INVESTIGATOR_URL: http://investigator:8300
+  volumes: [ "p2p-data:/data" ]
+  restart: unless-stopped
+  depends_on: { bootstrap: { condition: service_completed_successfully } }
+
+services:
+  bootstrap:   # synthetic data → features → models → RAG index (idempotent: skipped when already present)
+    <<: *app
+    depends_on: {}
+    restart: "no"
+    user: "0"
+    entrypoint: ["sh", "-c"]
+    command: ["test -f /data/models/current || (python -m p2p.data.synthetic --out /data && python -m p2p.ml.train && python -m p2p.rag.ingest); chown -R 10001 /data"]
+
+  audit:          { <<: *app, command: ["audit"],          environment: { <<: *env, HEALTH_PORT: "8103" } }
+  scoring:        { <<: *app, command: ["scoring"],        environment: { <<: *env, HEALTH_PORT: "8101" } }
+  mcp-erp:        { <<: *app, command: ["mcp-erp"],        environment: { <<: *env, HEALTH_PORT: "8201" } }
+  mcp-graph:      { <<: *app, command: ["mcp-graph"],      environment: { <<: *env, HEALTH_PORT: "8202" } }
+  mcp-knowledge:  { <<: *app, command: ["mcp-knowledge"],  environment: { <<: *env, HEALTH_PORT: "8203" } }
+  graph-analyst:  { <<: *app, command: ["graph-analyst"],  environment: { <<: *env, HEALTH_PORT: "8301" }, depends_on: { bootstrap: { condition: service_completed_successfully }, mcp-graph: { condition: service_started } } }
+  doc-auditor:    { <<: *app, command: ["doc-auditor"],    environment: { <<: *env, HEALTH_PORT: "8302" }, depends_on: { bootstrap: { condition: service_completed_successfully }, mcp-erp: { condition: service_started }, mcp-knowledge: { condition: service_started } } }
+  investigator:   { <<: *app, command: ["investigator"],   environment: { <<: *env, HEALTH_PORT: "8300" }, depends_on: { bootstrap: { condition: service_completed_successfully }, graph-analyst: { condition: service_started }, doc-auditor: { condition: service_started } } }
+  case:           { <<: *app, command: ["case"],           environment: { <<: *env, HEALTH_PORT: "8102" }, ports: ["8102:8102"] }
+  gateway:        { <<: *app, command: ["gateway"],        environment: { <<: *env, HEALTH_PORT: "8100" }, ports: ["8100:8100"], depends_on: { bootstrap: { condition: service_completed_successfully }, scoring: { condition: service_started }, investigator: { condition: service_started }, case: { condition: service_started }, audit: { condition: service_started } } }
+
+  ollama:         # optional open-weights LLM for Tier 3 (profile: ollama). Pull once: docker compose exec ollama ollama pull gemma3:12b
+    profiles: ["ollama"]
+    image: ollama/ollama:latest
+    volumes: [ "ollama:/root/.ollama" ]
+    ports: ["11434:11434"]
+
+volumes: { p2p-data: {}, ollama: {} }

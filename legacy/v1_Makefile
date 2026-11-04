@@ -1,0 +1,43 @@
+.PHONY: setup venv install test test-unit test-integration test-edge test-perf lint run-api clean
+
+UV = /home/sgp-z/.local/bin/uv
+VENV_DIR = .venv
+PYTHON = $(VENV_DIR)/bin/python
+PIP = $(VENV_DIR)/bin/pip
+PYTEST = $(VENV_DIR)/bin/pytest
+UVICORN = $(VENV_DIR)/bin/uvicorn
+
+venv:
+	$(UV) venv $(VENV_DIR)
+
+install: venv
+	$(UV) pip install --python $(PYTHON) -e ".[dev]"
+
+setup: install
+	cp -n .env.example .env || true
+
+test:
+	$(PYTEST) tests/ -v
+
+test-unit:
+	$(PYTEST) tests/unit/ -v -m unit
+
+test-integration:
+	$(PYTEST) tests/integration/ -v -m integration
+
+test-edge:
+	$(PYTEST) tests/integration/test_edge_cases.py -v -m edge_case
+
+test-perf:
+	$(PYTEST) tests/performance/test_latency_p99.py -v -s -m performance
+
+coverage:
+	$(PYTEST) --cov=src --cov-report=term-missing tests/
+
+run-api:
+	$(UVICORN) src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+clean:
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	rm -rf .pytest_cache .coverage htmlcov

@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "p2p-fraud"
+version = "2.0.0"
+description = "Agentic Procure-to-Pay fraud detection: ADK agents + A2A + MCP + RAG, GCP-ready, open-stack by default"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+    # agent runtime (Google ADK, A2A, MCP)
+    "google-adk[a2a]>=2.13,<3",
+    "a2a-sdk>=1.3,<2",
+    "fastmcp>=4.1,<5",
+    # model serving / data
+    "lightgbm>=4.5",
+    "scikit-learn>=1.5",
+    "pandas>=2.2",
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "networkx>=3.3",
+    # services
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "sqlalchemy>=2.0",
+    "structlog>=24.1",
+    "prometheus-client>=0.20",
+]
+
+[project.optional-dependencies]
+# Open-source local LLM through LiteLLM (Ollama, vLLM, ...). Cheapest way to run Tier 3.
+ollama = ["litellm>=1.50"]
+# Google Cloud adapters (Vertex AI, GCS WORM, BigQuery, Pub/Sub, Secret Manager).
+gcp = [
+    "google-cloud-aiplatform[agent_engines,adk]>=1.80",
+    "google-cloud-storage>=2.18",
+    "google-cloud-bigquery>=3.25",
+    "google-cloud-pubsub>=2.23",
+    "psycopg[binary]>=3.2",  # Cloud SQL for PostgreSQL (case + decision stores)
+]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "pytest-cov>=5", "ruff>=0.6"]
+
+[project.scripts]
+p2p-generate-data = "p2p.data.synthetic:main"
+p2p-train = "p2p.ml.train:main"
+p2p-ingest-rag = "p2p.rag.ingest:main"
+p2p-serve = "p2p.serve:main"
+p2p-stack = "p2p.stack:main"
+p2p-benchmark = "p2p.llmops.benchmark:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "e2e: boots every microservice as a subprocess (slower)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+    "ignore::FutureWarning",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
