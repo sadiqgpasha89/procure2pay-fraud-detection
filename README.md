@@ -1,5 +1,7 @@
 # Procure-to-Pay Fraud Detection — agentic, microservice MVP
 
+> **🌐 Live use-case page: <https://sadiqgpasha89.github.io/procure2pay-fraud-detection/>** — a visual walkthrough of the problem, the three-tier approach, architecture and results.
+
 Detects and intercepts procure-to-pay fraud (bank-detail diversion, split invoices, shell vendors, collusion, phantom deliveries, contract overbilling, duplicates, sanctioned vendors) **before payment**, and gives investigators an evidence-cited case dossier.
 
 Built on **Google ADK** (agents), **A2A** (agent↔agent), **MCP** (agent↔tools), a **RAG** layer over contracts/policies/e-mails, and a GCP-ready, open-source-by-default stack. Runs end-to-end on a laptop with **synthetic data** and no API key; one switch moves Tier 3 to a local open-weights model or Vertex AI Gemini.

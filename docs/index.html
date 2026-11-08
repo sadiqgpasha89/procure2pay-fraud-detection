@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Procure-to-Pay Fraud Detection — Use Case</title>
+<meta name="description" content="An agentic, evidence-cited system that detects and intercepts procure-to-pay fraud before payment. Built on Google ADK, A2A, MCP and RAG.">
+<style>
+  :root {
+    --bg: #fafaf7; --surface: #ffffff; --surface-2: #f2f1ec;
+    --text: #1d1d1b; --muted: #5f5e5a; --border: #e2e0d8;
+    --accent: #0f6e56; --accent-soft: #e1f5ee;
+    --warn: #993c1d; --warn-soft: #faece7;
+    --t1: #185fa5; --t1-soft: #e6f1fb;
+    --t2: #854f0b; --t2-soft: #faeeda;
+    --t3: #0f6e56; --t3-soft: #e1f5ee;
+    --code-bg: #1d1d1b; --code-text: #f1efe8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --surface: #1f1f1d; --surface-2: #272725;
+      --text: #ecebe4; --muted: #a3a29b; --border: #36352f;
+      --accent: #5dcaa5; --accent-soft: #10392e;
+      --warn: #f0997b; --warn-soft: #3a2018;
+      --t1: #85b7eb; --t1-soft: #12304d;
+      --t2: #ef9f27; --t2-soft: #3a2a0c;
+      --t3: #5dcaa5; --t3-soft: #10392e;
+      --code-bg: #0e0e0d; --code-text: #e7e5dc;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  header.nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+  header.nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; }
+  .brand { font-weight: 650; font-size: 15px; white-space: nowrap; }
+  nav ul { display: flex; gap: 18px; list-style: none; margin: 0; padding: 0; font-size: 14px; overflow-x: auto; }
+  nav a { color: var(--muted); text-decoration: none; white-space: nowrap; }
+  nav a:hover { color: var(--text); }
+
+  .hero { padding: 72px 0 48px; }
+  .eyebrow { display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 4px 12px; border-radius: 99px; }
+  h1 { font-size: clamp(32px, 5.5vw, 52px); line-height: 1.12; margin: 18px 0 16px; letter-spacing: -.02em; }
+  .lead { font-size: 19px; color: var(--muted); max-width: 720px; margin: 0 0 28px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn { display: inline-block; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (prefers-color-scheme: dark) { .btn.primary { color: #08241b; } }
+  .btn:hover { filter: brightness(.96); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 44px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .stat b { display: block; font-size: 28px; line-height: 1.2; letter-spacing: -.02em; }
+  .stat span { font-size: 13px; color: var(--muted); }
+
+  section { padding: 56px 0; border-top: 1px solid var(--border); }
+  h2 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); max-width: 700px; margin: 0 0 28px; }
+  h3 { font-size: 18px; margin: 0 0 6px; }
+  p { margin: 0 0 14px; }
+
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .g4 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .card p { color: var(--muted); font-size: 15px; margin: 0; }
+  .card h3 .tag { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--warn); background: var(--warn-soft); padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: middle; }
+
+  .callout { background: var(--accent-soft); border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 24px 0 0; }
+  .callout p { margin: 0; }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+
+  .tier { border-radius: 12px; padding: 18px 20px; border: 1px solid transparent; }
+  .tier .n { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .tier h3 { margin: 4px 0 8px; }
+  .tier p { font-size: 15px; margin: 0 0 10px; }
+  .tier .meta { font-size: 13px; opacity: .85; margin: 0; }
+  .t1 { background: var(--t1-soft); color: var(--t1); } .t2 { background: var(--t2-soft); color: var(--t2); } .t3 { background: var(--t3-soft); color: var(--t3); }
+  .tier p, .tier h3 { color: var(--text); } .tier .n, .tier .meta { color: inherit; }
+
+  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; overflow-x: auto; }
+  .diagram svg { display: block; min-width: 760px; width: 100%; height: auto; }
+  .diagram text { fill: var(--text); font-family: system-ui, sans-serif; }
+  .diagram .mut { fill: var(--muted); }
+  .diagram .box { fill: var(--surface-2); stroke: var(--border); stroke-width: 1; }
+  .diagram .b1 { fill: var(--t1-soft); stroke: var(--t1); } .diagram .b2 { fill: var(--t2-soft); stroke: var(--t2); } .diagram .b3 { fill: var(--t3-soft); stroke: var(--t3); }
+  .diagram .bw { fill: var(--warn-soft); stroke: var(--warn); }
+  .diagram .arr { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+  .diagram marker path { fill: var(--muted); }
+
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 36px 1fr; gap: 14px; align-items: start; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; }
+  .steps li::before { content: counter(s); width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; display: grid; place-items: center; }
+  .steps b { display: block; }
+  .steps span { color: var(--muted); font-size: 15px; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-2); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  .scroll { overflow-x: auto; }
+
+  .principle { display: grid; grid-template-columns: 40px 1fr; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .principle:last-child { border-bottom: 0; }
+  .principle .i { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .principle p { color: var(--muted); margin: 0; font-size: 15px; }
+
+  pre { background: var(--code-bg); color: var(--code-text); padding: 18px 20px; border-radius: 12px; overflow-x: auto; font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .92em; }
+  p code, td code, li code { background: var(--surface-2); padding: 1px 6px; border-radius: 5px; }
+
+  footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+  @media (max-width: 640px) { .hero { padding-top: 44px; } nav ul { gap: 14px; } .brand { display: none; } }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <span class="brand">P2P Fraud Detection</span>
+    <nav aria-label="Sections">
+      <ul>
+        <li><a href="#problem">Problem</a></li>
+        <li><a href="#approach">Approach</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#principles">Design</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#run">Run it</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <span class="eyebrow">Use case · Finance &amp; Internal Audit</span>
+    <h1>Stop procure-to-pay fraud <em style="font-style:normal;color:var(--accent)">before the money leaves.</em></h1>
+    <p class="lead">An agentic system that scores every invoice in about 80&nbsp;ms, escalates only the suspicious few to AI investigators, and hands analysts an evidence-cited case file where every claim is hash-verified against the source system.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection">View on GitHub</a>
+      <a class="btn" href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection/blob/main/docs/articles/part-1-architecture-and-the-fast-path.md">Read the write-up</a>
+      <a class="btn" href="#run">Run it locally</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>89%</b><span>fraud recall on held-out invoices</span></div>
+      <div class="stat"><b>0%</b><span>legit invoices falsely flagged (benchmark sample)</span></div>
+      <div class="stat"><b>236 ms</b><span>P99 hot-path decision latency</span></div>
+      <div class="stat"><b>0</b><span>evidence mismatches in 56 re-verified items</span></div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:14px">All figures are measured on synthetic data. They demonstrate the pipeline, not production accuracy.</p>
+  </div>
+
+  <!-- PROBLEM -->
+  <section id="problem">
+    <h2>The problem</h2>
+    <p class="sub">P2P fraud is boring in the way that makes it expensive. Nobody hacks anything. Someone asks accounts payable to “update our banking details”, from a look-alike domain. Someone splits a large invoice to slip under an approval limit. The payment is released, and the money is gone.</p>
+    <div class="grid g4">
+      <div class="card"><h3>Bank-detail diversion</h3><p>A vendor’s account number is changed shortly before a payment run, often via spoofed e-mail.</p></div>
+      <div class="card"><h3>Split invoices</h3><p>One large invoice is cut into several smaller ones below the approval threshold (smurfing).</p></div>
+      <div class="card"><h3>Shell vendors</h3><p>Fictitious suppliers controlled by insiders or outsiders, onboarded with thin due diligence.</p></div>
+      <div class="card"><h3>Collusion</h3><p>Approvers and vendors working together to authorise payments that should not clear.</p></div>
+      <div class="card"><h3>Phantom deliveries</h3><p>Goods receipts recorded for goods that never arrived, so the three-way match passes.</p></div>
+      <div class="card"><h3>Contract overbilling</h3><p>Invoiced prices exceed what the contract allows. Spotting it means reading the contract.</p></div>
+      <div class="card"><h3>Duplicates</h3><p>The same invoice resubmitted with small variations to get paid twice.</p></div>
+      <div class="card"><h3>Sanctioned vendors</h3><p>Payments to entities on OFAC or PEP lists: a compliance failure, not just a financial loss.</p></div>
+    </div>
+    <div class="callout"><p><b>The challenge:</b> catch all of this in near real time, during high-volume payment runs, without drowning the AP team in false alarms, and with an audit trail that satisfies SOX and GDPR reviewers.</p></div>
+  </section>
+
+  <!-- APPROACH -->
+  <section id="approach">
+    <h2>The approach: three tiers, cheapest first</h2>
+    <p class="sub">Put the fast, deterministic things in front of the slow, fallible one. The language model only runs on the ~7–10% of invoices the earlier tiers escalate, and it never decides what happens to the money.</p>
+    <div class="grid g3">
+      <div class="tier t1">
+        <div class="n">Tier 1 · Rules</div>
+        <h3>Hard policy checks</h3>
+        <p>Exact duplicates, sanctions hits, bank changes within 72 hours of a payment run, invoices above PO ceilings.</p>
+        <p class="meta">Microseconds · deterministic · immediate BLOCK</p>
+      </div>
+      <div class="tier t2">
+        <div class="n">Tier 2 · Machine learning</div>
+        <h3>Behavioural risk score</h3>
+        <p>LightGBM classifier, Isolation Forest and graph features score each invoice 0–1, with TreeSHAP showing which features drove it.</p>
+        <p class="meta">~80 ms P50 · explainable · APPROVE / HOLD</p>
+      </div>
+      <div class="tier t3">
+        <div class="n">Tier 3 · Agents</div>
+        <h3>Evidence-cited investigation</h3>
+        <p>An investigator agent fans out to a graph analyst and a document auditor, each using read-only tools, then compiles a case dossier.</p>
+        <p class="meta">~3 s · async · human sign-off</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:36px">Where in the lifecycle fraud strikes</h3>
+    <div class="scroll" style="margin-top:10px">
+    <table>
+      <thead><tr><th>Stage</th><th>Typical fraud</th></tr></thead>
+      <tbody>
+        <tr><td>Requisition</td><td>Split orders to dodge spend limits</td></tr>
+        <tr><td>Vendor onboarding</td><td>Shell companies, weak KYC</td></tr>
+        <tr><td>Purchase order</td><td>Off-contract or fabricated POs</td></tr>
+        <tr><td>Goods receipt</td><td>Phantom deliveries</td></tr>
+        <tr><td>Invoice intake</td><td>Tampered bank details or amounts, spoofed domains</td></tr>
+        <tr><td>2/3-way match</td><td>Exploiting tolerance thresholds</td></tr>
+        <tr><td>Approval</td><td>Collusive or rubber-stamped approvals</td></tr>
+        <tr><td>Payment</td><td>Account diversion, mid-cycle bank changes</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <p class="sub">Ten small services built from one container image. Agents talk to each other over <b>A2A</b> and to data through read-only <b>MCP</b> tool servers, on <b>Google ADK</b>.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 880 400" role="img" aria-label="Architecture: ERP sends invoice to gateway, which calls scoring service and returns a decision; suspicious invoices go asynchronously to the investigator agent, which fans out to specialist agents using MCP tool servers; results go to case service and audit service.">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+
+        <rect class="box" x="10" y="150" width="110" height="60" rx="10"/>
+        <text x="65" y="177" text-anchor="middle" font-size="14" font-weight="600">ERP / payment</text>
+        <text x="65" y="195" text-anchor="middle" font-size="12" class="mut">run</text>
+
+        <rect class="box" x="170" y="150" width="120" height="60" rx="10"/>
+        <text x="230" y="177" text-anchor="middle" font-size="14" font-weight="600">gateway</text>
+        <text x="230" y="195" text-anchor="middle" font-size="12" class="mut">idempotent</text>
+
+        <rect x="150" y="40" width="160" height="70" rx="10" style="fill:var(--t1-soft);stroke:var(--t1)"/>
+        <text x="230" y="68" text-anchor="middle" font-size="14" font-weight="600">scoring</text>
+        <text x="230" y="86" text-anchor="middle" font-size="12" class="mut">Tier 1 rules + Tier 2 ML</text>
+        <text x="230" y="101" text-anchor="middle" font-size="11" class="mut">+ SHAP</text>
+
+        <rect class="bw" x="10" y="40" width="110" height="70" rx="10"/>
+        <text x="65" y="68" text-anchor="middle" font-size="13" font-weight="600">APPROVE</text>
+        <text x="65" y="86" text-anchor="middle" font-size="13" font-weight="600">HOLD · BLOCK</text>
+        <text x="65" y="101" text-anchor="middle" font-size="11" class="mut">&lt; 250 ms P99</text>
+
+        <rect class="b3" x="350" y="130" width="170" height="100" rx="10"/>
+        <text x="435" y="156" text-anchor="middle" font-size="14" font-weight="600">investigator</text>
+        <text x="435" y="174" text-anchor="middle" font-size="12" class="mut">1 fan-out · 2 re-verify hashes</text>
+        <text x="435" y="190" text-anchor="middle" font-size="12" class="mut">3 narrate · 4 guardrails</text>
+        <text x="435" y="206" text-anchor="middle" font-size="12" class="mut">5 policy picks action</text>
+
+        <rect class="b3" x="590" y="60" width="130" height="56" rx="10"/>
+        <text x="655" y="85" text-anchor="middle" font-size="13" font-weight="600">graph-analyst</text>
+        <text x="655" y="102" text-anchor="middle" font-size="11" class="mut">A2A specialist</text>
+        <rect class="b3" x="590" y="244" width="130" height="56" rx="10"/>
+        <text x="655" y="269" text-anchor="middle" font-size="13" font-weight="600">doc-auditor</text>
+        <text x="655" y="286" text-anchor="middle" font-size="11" class="mut">A2A specialist</text>
+
+        <rect class="box" x="770" y="30" width="100" height="40" rx="8"/>
+        <text x="820" y="55" text-anchor="middle" font-size="12" font-weight="600">mcp-graph</text>
+        <rect class="box" x="770" y="150" width="100" height="40" rx="8"/>
+        <text x="820" y="175" text-anchor="middle" font-size="12" font-weight="600">mcp-erp</text>
+        <rect class="box" x="770" y="260" width="100" height="40" rx="8"/>
+        <text x="820" y="285" text-anchor="middle" font-size="12" font-weight="600">mcp-knowledge</text>
+
+        <rect class="box" x="350" y="320" width="170" height="56" rx="10"/>
+        <text x="435" y="345" text-anchor="middle" font-size="14" font-weight="600">case-service</text>
+        <text x="435" y="363" text-anchor="middle" font-size="12" class="mut">human-in-the-loop · KPIs</text>
+        <rect class="box" x="170" y="320" width="120" height="56" rx="10"/>
+        <text x="230" y="345" text-anchor="middle" font-size="14" font-weight="600">audit</text>
+        <text x="230" y="363" text-anchor="middle" font-size="12" class="mut">SHA-256 hash chain</text>
+
+        <path class="arr" d="M120 180 H168" marker-end="url(#ar)"/>
+        <path class="arr" d="M230 148 V112" marker-end="url(#ar)"/>
+        <path class="arr" d="M148 75 H122" marker-end="url(#ar)"/>
+        <path class="arr" stroke-dasharray="5 4" d="M292 180 H348" marker-end="url(#ar)"/>
+        <text x="320" y="172" text-anchor="middle" font-size="11" class="mut">async</text>
+        <path class="arr" d="M520 150 L588 100" marker-end="url(#ar)"/>
+        <path class="arr" d="M520 210 L588 262" marker-end="url(#ar)"/>
+        <path class="arr" d="M722 88 L768 56" marker-end="url(#ar)"/>
+        <path class="arr" d="M722 264 L768 188" marker-end="url(#ar)"/>
+        <path class="arr" d="M722 284 H768" marker-end="url(#ar)"/>
+        <path class="arr" d="M435 232 V318" marker-end="url(#ar)"/>
+        <path class="arr" d="M348 348 H292" marker-end="url(#ar)"/>
+      </svg>
+    </div>
+
+    <div class="grid g3" style="margin-top:20px">
+      <div class="card"><h3>Hot path</h3><p>Gateway → scoring → decision. No LLM involved, so a model outage never blocks a payment run.</p></div>
+      <div class="card"><h3>Cold path</h3><p>Only escalated invoices trigger the investigator, asynchronously. The result lands in the case queue for an analyst.</p></div>
+      <div class="card"><h3>Audit trail</h3><p>Every decision, dossier and human sign-off is written to a tamper-evident hash-chained ledger by a single writer.</p></div>
+    </div>
+
+    <h3 style="margin-top:36px">What the investigator does</h3>
+    <ol class="steps" style="margin-top:12px">
+      <li><div><b>Fan out</b><span>Specialists receive only <code>invoice_id</code> and <code>vendor_id</code>, not the ML score, so they corroborate independently.</span></div></li>
+      <li><div><b>Re-verify</b><span>Every cited record hash is re-derived by the MCP server that owns the data. Unverifiable claims are dropped.</span></div></li>
+      <li><div><b>Narrate</b><span>The language model writes prose from verified findings only.</span></div></li>
+      <li><div><b>Guardrail</b><span>Citation and grounding checks run over the narrative.</span></div></li>
+      <li><div><b>Decide</b><span>A deterministic policy function picks the recommended action. A human signs off.</span></div></li>
+    </ol>
+  </section>
+
+  <!-- PRINCIPLES -->
+  <section id="principles">
+    <h2>Design decisions that matter</h2>
+    <p class="sub">The parts that make this safe to put near money.</p>
+    <div class="card" style="padding:6px 22px">
+      <div class="principle"><div class="i">1</div><div><h3>The LLM never decides money</h3><p>The action comes from a pure policy function of rule violations, ML score and verified findings. A failed or empty investigation can never yield an auto-approval.</p></div></div>
+      <div class="principle"><div class="i">2</div><div><h3>Evidence is content-addressed</h3><p>Each tool result carries <code>(source, record_id, sha256)</code>. Citations are re-verified against the owning server before they reach the dossier.</p></div></div>
+      <div class="principle"><div class="i">3</div><div><h3>No anchoring on the ML score</h3><p>Specialist agents never see it, so their evidence is independent.</p></div></div>
+      <div class="principle"><div class="i">4</div><div><h3>Retrieved text is untrusted</h3><p>Instruction-like spans in e-mails and documents are stripped at the MCP boundary and reported as a finding. 6 of 6 planted injections were flagged, none auto-approved.</p></div></div>
+      <div class="principle"><div class="i">5</div><div><h3>No train/serve skew</h3><p>One feature builder serves training and scoring, always point-in-time.</p></div></div>
+      <div class="principle"><div class="i">6</div><div><h3>Ground truth is unreachable by agents</h3><p>Labels live in a separate store, and a test asserts no tool or agent module can import it.</p></div></div>
+      <div class="principle"><div class="i">7</div><div><h3>Fail closed, stay up</h3><p>Verification outages add risk rather than waving invoices through. An audit outage is logged but does not stop decisions.</p></div></div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results">
+    <h2>Results</h2>
+    <p class="sub">Temporal hold-out on synthetic data with the offline reference model. Full report in <a href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection/blob/main/docs/EVAL_REPORT.md"><code>docs/EVAL_REPORT.md</code></a>.</p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Tier 2 AUC-PR (rule-passing population, 4% base rate)</td><td class="num">0.89</td></tr>
+        <tr><td>End-to-end recall / legit flag rate (668 held-out invoices)</td><td class="num">87.8% / 1.75%</td></tr>
+        <tr><td>Benchmark recall / false-positive rate (126 invoices)</td><td class="num">89.1% / 0.0%</td></tr>
+        <tr><td>Hot-path latency, 8 concurrent clients</td><td class="num">P50 79 ms · P99 236 ms</td></tr>
+        <tr><td>Tier 3 synthesis time</td><td class="num">P50 3.1 s · P95 3.9 s</td></tr>
+        <tr><td>ERP evidence independently re-verified</td><td class="num">56 items, 0 mismatches</td></tr>
+        <tr><td>Planted prompt injections flagged / auto-approved</td><td class="num">6 of 6 / 0</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout warn">
+      <p><b>Weak spots, reported rather than hidden.</b> Split-invoice recall is only 57%, because the first invoice of a split looks normal when it arrives. Near-duplicates are caught only within a 7-day window. With a small local model (gemma4:e4b), analysis was looser than the reference model, and hash verification proves a record exists unchanged, not that the model read it correctly. Treat a larger model as the production default.</p>
+    </div>
+  </section>
+
+  <!-- STACK -->
+  <section id="stack">
+    <h2>Stack and cloud mapping</h2>
+    <p class="sub">Open-source by default, GCP-ready. One setting, <code>LLM_PROVIDER</code>, switches Tier 3 between an offline reference model, a local Ollama model, and Gemini on Vertex AI.</p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Capability</th><th>Open stack (default)</th><th>Google Cloud</th></tr></thead>
+      <tbody>
+        <tr><td>Agents / LLM</td><td>ADK + reference or Ollama model</td><td>Cloud Run or Vertex AI Agent Engine; Gemini</td></tr>
+        <tr><td>Tools</td><td>FastMCP servers</td><td>Same, on Cloud Run</td></tr>
+        <tr><td>RAG</td><td>TF-IDF ⊕ dense embeddings, RRF fusion</td><td>Vertex embeddings; AlloyDB or Vector Search</td></tr>
+        <tr><td>Warehouse</td><td>SQLite</td><td>BigQuery / AlloyDB</td></tr>
+        <tr><td>Models</td><td>LightGBM bundle on disk</td><td>Vertex AI Training, Registry, Endpoints</td></tr>
+        <tr><td>Audit</td><td>JSONL hash chain</td><td>GCS locked-retention bucket + BigQuery</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout warn" style="margin-top:20px"><p><b>Verified vs not.</b> Everything in <code>src/</code>, the tests and the Ollama path were run. The Terraform, Cloud Build config, Docker image build, Agent Engine deploy script and Vertex-hosted Gemini were <i>not</i> executed. Review before applying.</p></div>
+  </section>
+
+  <!-- RUN -->
+  <section id="run">
+    <h2>Run it yourself</h2>
+    <p class="sub">Everything runs on a laptop with synthetic data and no API key.</p>
+<pre><code>git clone https://github.com/sadiqgpasha89/procure2pay-fraud-detection
+cd procure2pay-fraud-detection
+
+make setup       # uv venv + dependencies (Python 3.12)
+make bootstrap   # synthetic data, features, models, RAG index (~25 s)
+make up          # 10 services: gateway :8100, console :8102
+
+curl -s localhost:8100/v1/evaluate \
+  -H 'content-type: application/json' \
+  -d '{"invoice_id":"INV-004065","wait_for_investigation":true}' \
+  | jq .dossier.agent_narrative</code></pre>
+    <div class="grid g3" style="margin-top:20px">
+      <a class="card" style="text-decoration:none;color:inherit" href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection/blob/main/docs/articles/part-1-architecture-and-the-fast-path.md"><h3>Part 1 →</h3><p>Architecture and the fast path</p></a>
+      <a class="card" style="text-decoration:none;color:inherit" href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection/blob/main/docs/articles/part-2-agents-mcp-a2a-and-evidence.md"><h3>Part 2 →</h3><p>Agents, MCP, A2A and evidence</p></a>
+      <a class="card" style="text-decoration:none;color:inherit" href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection/blob/main/docs/articles/part-3-real-llms-testing-and-gcp.md"><h3>Part 3 →</h3><p>Real LLMs, testing and GCP</p></a>
+    </div>
+    <p style="margin-top:20px;color:var(--muted);font-size:15px">Also: <a href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection/blob/main/docs/ARCHITECTURE.md">architecture notes</a> · <a href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection/blob/main/procure_to_pay_fraud_detection_use_case.md">full enterprise specification</a></p>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Procure-to-Pay Fraud Detection · synthetic-data MVP</span>
+    <a href="https://github.com/sadiqgpasha89/procure2pay-fraud-detection">github.com/sadiqgpasha89/procure2pay-fraud-detection</a>
+  </div>
+</footer>
+
+</body>
+</html>
